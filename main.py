@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 class Node(ABC):
     op_name: str = None
     index: int = 0
+    is_param: bool = False
+    learnable: bool = False
 
     def __init__(self, name=None):
         if not name:
@@ -36,14 +38,15 @@ class Node(ABC):
 
     def backward(self):
         self.build_grad()
-        self.grad.show()
         return self.grad.forward()
 
     def build_grad(self) -> Node:
         if self.grad:
             return self.grad
         child_grads = []
-        for c in self.children:
+
+        current_children = self.children.copy()
+        for c in current_children:
             child_grad = c.build_grad()
             bp = c.bp(self, child_grad)
             child_grads.append(bp)
@@ -63,8 +66,25 @@ class Node(ABC):
         self.parents.append(other)
         other.children.append(self)
 
+    def reset(self):
+        if not self.is_param:
+            self.value = None
+
+    def simple_apply_grad(self, lr):
+        self.value -= lr * self.grad.value
+
+    def simple_apply_grad_upstream(self, lr):
+        self.simple_apply_grad(lr)
+        for p in self.parents:
+            p.simple_apply_grad_upstream(lr)
+
+    def reset_upstream(self):
+        self.reset()
+        for p in self.parents:
+            p.reset_upstream()
+
     def __str__(self):
-        return f"<{self.name}>"
+        return f"<{self.name}{' ' + str(self.value.shape) if self.value is not None else ''}>"
 
     def show(self, indent: int = 0):
         indentation = "                " * indent
@@ -75,10 +95,11 @@ class Node(ABC):
 
 class PlaceHolder(Node):
     op_name = "PlaceHolder"
+    is_param = True
 
-    def __init__(self, shape: Tuple):
+    def __init__(self, shape: Tuple, **kwargs):
+        super().__init__(**kwargs)
         self.shape = shape
-        super().__init__()
 
     def op(self):
         return self.value
@@ -93,9 +114,26 @@ class PlaceHolder(Node):
 
 class Constant(Node):
     op_name = "Constant"
+    is_param = True
 
-    def __init__(self, value: np.ndarray):
-        super().__init__()
+    def __init__(self, value: np.ndarray, **kwargs):
+        super().__init__(**kwargs)
+        self.value = value
+
+    def op(self):
+        return self.value
+
+    def bp(self, wrt: Node, downstream_grad: Node):
+        pass
+
+
+class Parameter(Node):
+    op_name = "Parameter"
+    is_param = True
+    learnable = True
+
+    def __init__(self, value: np.ndarray, **kwargs):
+        super().__init__(**kwargs)
         self.value = value
 
     def op(self):
@@ -108,8 +146,8 @@ class Constant(Node):
 class Transpose(Node):
     op_name = "Transpose"
 
-    def __init__(self, parent):
-        super().__init__()
+    def __init__(self, parent, **kwargs):
+        super().__init__(**kwargs)
         self.parent = parent
         self.link_from(parent)
 
@@ -123,8 +161,8 @@ class Transpose(Node):
 class Add(Node):
     op_name = "Add"
 
-    def __init__(self, *in_nodes):
-        super().__init__()
+    def __init__(self, *in_nodes, **kwargs):
+        super().__init__(**kwargs)
         self.in_nodes = in_nodes
         for n in in_nodes:
             self.link_from(n)
@@ -136,11 +174,33 @@ class Add(Node):
         return downstream_grad
 
 
+class ScalarMul(Node):
+    op_name = "ScalarMul"
+
+    def __init__(self, k: Node, mat: Node, **kwargs):
+        super().__init__(**kwargs)
+        self.k = k
+        self.mat = mat
+        k.link_to(self)
+        mat.link_to(self)
+
+    def op(self):
+        return self.k.value.reshape(1,) * self.mat.value
+
+    def bp(self, wrt: Node, downstream_grad: Node) -> Node:
+        if wrt == self.mat:
+            return ScalarMul(self.k, downstream_grad)
+        elif wrt == self.k:
+            raise NotImplemented
+        else:
+            raise ValueError
+
+
 class MatMul(Node):
     op_name = "MatMul"
 
-    def __init__(self, w, x):
-        super().__init__()
+    def __init__(self, w, x, **kwargs):
+        super().__init__(**kwargs)
         self.w = w
         self.x = x
         self.link_from(w)
@@ -153,7 +213,7 @@ class MatMul(Node):
         if wrt == self.w:
             return MatMul(downstream_grad, Transpose(self.x))
         elif wrt == self.x:
-            return MatMul(self.w, downstream_grad)
+            return MatMul(Transpose(self.w), downstream_grad)
         else:
             raise ValueError
 
@@ -185,31 +245,41 @@ def draw_nx(node):
 
 if __name__ == '__main__':
     # Build graph
-    input_1 = PlaceHolder((3, 1))
-    input_2 = PlaceHolder((3, 1))
-    weight_1 = Constant(np.asarray([
-        [1, 2, 3],
-        [2, 3, 4],
-        [3, 4, 5]
-    ]))
-    weight_2 = Constant(np.asarray([
-        [2, 1, 3],
-        [3, 2, 1],
-        [1, 3, 2]
-    ]))
+    x = PlaceHolder(shape=(10, 1), name='x')
+    y_true = PlaceHolder(shape=(1, 1), name='y_true')
+    weight = Parameter(np.random.rand(1, 10), name='weight')
+    bias = Parameter(np.random.rand(1, 1), name='bias')
 
-    v1 = MatMul(weight_1, input_1)
-    v2 = MatMul(weight_2, input_2)
-    r = Add(v1, v2)
+    v = MatMul(weight, x, name='wx')
+    y_pred = Add(v, bias, name='y_pred')
 
-    # Fill value
-    input_1.fill_value(np.array([1, 2, 3]).reshape((3, 1)))
-    input_2.fill_value(np.array([3, 2, 1]).reshape((3, 1)))
+    # Loss
+    minus_one = Constant(np.array([-1]), name='-1')
+    minus_y = ScalarMul(minus_one, y_true, name='-y')
+    diff = Add(y_pred, minus_y, name='y-y_true')
+    loss = MatMul(diff, diff, name='loss')
 
-    # Compute
-    result = r.forward()
-    grad = weight_1.backward()
-    r.show()
-    print(result)
-    print(grad)
-    print('Hello World')
+    loss.show()
+
+    # Train
+    real_w = np.random.rand(1, 10)
+    real_b = np.random.rand(1, 1)
+    for i in range(10000):
+        # generate and fill data
+        real_x = np.random.rand(10, 1)
+        real_y = real_w.dot(real_x) + real_b
+        x.fill_value(real_x)
+        y_true.fill_value(real_y)
+
+        loss_val = loss.forward()[0][0]
+        w_grad = weight.backward()
+        b_grad = bias.backward()
+
+        weight.simple_apply_grad_upstream(0.01)
+        bias.simple_apply_grad_upstream(0.01)
+
+        loss.reset_upstream()
+        weight.grad.reset_upstream()
+        bias.grad.reset_upstream()
+
+        print(f"{i}   {loss_val}")
