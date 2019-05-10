@@ -2,8 +2,6 @@ from __future__ import annotations
 from abc import ABC
 import numpy as np
 from typing import *
-import networkx
-import matplotlib.pyplot as plt
 
 
 class Node(ABC):
@@ -274,27 +272,3 @@ class Max(Node):
             raise ValueError()
         return ElementwiseMut(cond, downstream_grad)
 
-
-def to_networkx(g, node: Node):
-    g.add_node(node)
-    for n in node.children:
-        if n in g:
-            g.add_edge(node, n)
-        else:
-            g.add_node(n)
-            g.add_edge(node, n)
-            to_networkx(g, n)
-    for n in node.parents:
-        if n in g:
-            g.add_edge(n, node)
-        else:
-            g.add_node(n)
-            g.add_edge(n, node)
-            to_networkx(g, n)
-
-
-def draw_nx(node):
-    g = networkx.DiGraph()
-    to_networkx(g, node)
-    networkx.draw(g, with_labels=True)
-    plt.show()
