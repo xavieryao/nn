@@ -172,6 +172,32 @@ class Add(Node):
         return downstream_grad
 
 
+class Sub(Node):
+    op_name = "Sub"
+
+    def __init__(self, a: Node, b: Node, **kwargs):
+        """
+        a - b, elementwise
+        """
+        super().__init__(**kwargs)
+        self.a = a
+        self.b = b
+        a.link_to(self)
+        b.link_to(self)
+
+    def op(self):
+        return self.a.value - self.b.value
+
+    def bp(self, wrt: Node, downstream_grad: Node):
+        if wrt == self.a:
+            constant = Constant(np.ones((1, )))
+        elif wrt == self.b:
+            constant = Constant(-np.ones((1, )))
+        else:
+            raise ValueError()
+        return ScalarMul(constant, downstream_grad)
+
+
 class ScalarMul(Node):
     op_name = "ScalarMul"
 
@@ -233,7 +259,7 @@ class Geq(Node):
         raise NotImplemented
 
 
-class ElementwiseMut(Node):
+class ElementwiseMul(Node):
     op_name = "ElementwiseMut"
 
     def __init__(self, a: Node, b: Node, **kwargs):
@@ -270,7 +296,58 @@ class Max(Node):
             cond = Geq(self.b, self.a)
         else:
             raise ValueError()
-        return ElementwiseMut(cond, downstream_grad)
+        return ElementwiseMul(cond, downstream_grad)
+
+
+class Exp(Node):
+    op_name = "Exp"
+
+    def __init__(self, x: Node, **kwargs):
+        super().__init__(**kwargs)
+        self.x = x
+        self.link_from(x)
+
+    def op(self):
+        return np.exp(self.x.value)
+
+    def bp(self, wrt: Node, downstream_grad: Node):
+        return ElementwiseMul(Exp(self.x), downstream_grad)
+
+
+class Log(Node):
+    op_name = "Log"
+
+    def __init__(self, x: Node, **kwargs):
+        super().__init__(**kwargs)
+        self.x = x
+        self.link_from(x)
+
+    def op(self):
+        return np.log(self.x.value)
+
+    def bp(self, wrt: Node, downstream_grad: Node):
+        pow = Constant(np.asarray([-1.]))
+        return ElementwiseMul(Pow(self.x, pow), downstream_grad)
+
+
+class Pow(Node):
+    op_name = "Pow"
+
+    def __init__(self, x: Node, a: Node, **kwargs):
+        super().__init__(**kwargs)
+        self.a = a
+        self.x = x
+        self.link_from(a)
+        self.link_from(x)
+
+    def op(self):
+        return np.power(self.x.value, self.a.value)
+
+    def bp(self, wrt: Node, downstream_grad: Node):
+        one = Constant(np.asarray([1.]))
+        new_power = Sub(self.a, one)
+        grad = ScalarMul(self.a, Pow(self.x, new_power))
+        return ElementwiseMul(grad, downstream_grad)
 
 
 """
@@ -281,5 +358,9 @@ add = Add
 scalar_mul = ScalarMul
 matmul = MatMul
 geq = Geq
-elementwise_mut = ElementwiseMut
-max = Max
+elementwise_mut = ElementwiseMul
+maximum = Max
+exp = Exp
+log = Log
+pow = Pow
+sub = Sub

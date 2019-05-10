@@ -30,8 +30,8 @@ def linear_regression():
         y_true.fill_value(real_y)
 
         loss_val = loss.forward()[0][0]
-        w_grad = weight.backward()
-        b_grad = bias.backward()
+        weight.backward()
+        bias.backward()
 
         weight.simple_apply_grad(0.01)
         bias.simple_apply_grad(0.01)
