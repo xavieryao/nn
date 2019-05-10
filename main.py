@@ -191,7 +191,7 @@ class ScalarMul(Node):
         if wrt == self.mat:
             return ScalarMul(self.k, downstream_grad)
         elif wrt == self.k:
-            raise NotImplemented
+            return self.mat
         else:
             raise ValueError
 
@@ -275,8 +275,8 @@ if __name__ == '__main__':
         w_grad = weight.backward()
         b_grad = bias.backward()
 
-        weight.simple_apply_grad_upstream(0.01)
-        bias.simple_apply_grad_upstream(0.01)
+        weight.simple_apply_grad(0.01)
+        bias.simple_apply_grad(0.01)
 
         loss.reset_upstream()
         weight.grad.reset_upstream()
