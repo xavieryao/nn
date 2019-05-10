@@ -90,6 +90,36 @@ class Node(ABC):
         for c in self.parents:
             c.show(indent + 1)
 
+    def __add__(self, other):
+        if not isinstance(other, Node):
+            other = Constant(np.asarray(other))
+        return Add(self, other)
+
+    def __matmul__(self, other):
+        if not isinstance(other, Node):
+            other = Constant(np.asarray(other))
+        return MatMul(self, other)
+
+    def __mul__(self, other):
+        if not isinstance(other, Node):
+            other = Constant(np.asarray(other))
+        return ScalarMul(self, other)
+
+    def __sub__(self, other):
+        if not isinstance(other, Node):
+            other = Constant(np.asarray(other))
+        return Sub(self, other)
+
+    def __pow__(self, power, modulo=None):
+        if not isinstance(power, Node):
+            power = Constant(np.asarray(power))
+        return Pow(self, power)
+
+    def __ge__(self, other):
+        if not isinstance(other, Node):
+            other = Constant(np.asarray(other))
+        return Geq(self, other)
+
 
 class PlaceHolder(Node):
     op_name = "PlaceHolder"
