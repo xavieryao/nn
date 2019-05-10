@@ -1,4 +1,51 @@
 from low import *
+from medium import *
+
+
+def xor():
+    # define parameters
+    x_in = PlaceHolder(shape=(2, 1), name='x')
+    y_in = PlaceHolder(shape=(1, 1), name='y_true')
+    w1 = Parameter(np.random.rand(32, 2), name='w1')
+    b1 = Parameter(np.random.rand(32, 1), name='b1')
+    w2 = Parameter(np.random.rand(1, 32), name='w2')
+    b2 = Parameter(np.random.rand(1, 1), name='b2')
+    params = [w1, b1, w2, b2]
+
+    # forward calculation
+    x = relu(w1 @ x_in + b1)
+    x = sigmoid(w2 @ x + b2)
+
+    # loss function
+    loss = binary_cross_entropy(x, y_in)
+
+    # print computation graph
+    loss.show()
+
+    # train
+    iterations = 10000
+    for i in range(iterations):
+        x1 = int(np.random.rand() > 0.5)
+        x2 = int(np.random.rand() > 0.5)
+        y_true = x1 ^ x2
+
+        x_in.fill_value(np.asarray([x1, x2], dtype=np.float).reshape((2, 1)))
+        y_in.fill_value(np.asarray([[y_true]], dtype=np.float))
+
+        loss_val = loss.forward().item()
+        prob = x.value.item()
+        for p in params:
+            p.backward()
+
+        lr = 0.01
+        for p in params:
+            p.simple_apply_grad(lr)
+
+        loss.reset_upstream()
+        for p in params:
+            p.grad.reset_upstream()
+
+        print(f"It {i}/{iterations}   Loss: {loss_val}   y: {y_true}   logit: {prob}")
 
 
 def linear_regression():
@@ -41,3 +88,6 @@ def linear_regression():
         bias.grad.reset_upstream()
 
         print(f"{i}   {loss_val}")
+
+if __name__ == '__main__':
+    xor()

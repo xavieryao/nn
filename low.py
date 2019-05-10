@@ -206,7 +206,8 @@ class Add(Node):
             self.link_from(n)
 
     def op(self):
-        return np.sum(np.stack([x.value for x in self.in_nodes]), 0)
+        shape = self.in_nodes[0].value.shape
+        return np.sum(np.stack([x.value.reshape(shape) for x in self.in_nodes]), 0)
 
     def bp(self, wrt: Node, downstream_grad: Node):
         return downstream_grad
@@ -296,7 +297,7 @@ class Geq(Node):
         return (self.a.value >= self.b.value).astype(np.float)
 
     def bp(self, wrt: Node, downstream_grad: Node):
-        raise NotImplemented
+        raise NotImplemented()
 
 
 class ElementwiseMul(Node):
@@ -313,7 +314,7 @@ class ElementwiseMul(Node):
         return self.a.value * self.b.value
 
     def bp(self, wrt: Node, downstream_grad: Node):
-        raise NotImplemented
+        raise NotImplemented()
 
 
 class Max(Node):
@@ -412,3 +413,5 @@ constants
 zero = Constant(value=np.asarray([0.]))
 one = Constant(value=np.asarray([1.]))
 neg_one = Constant(value=np.asarray([-1.]))
+
+# TODO concat

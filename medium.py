@@ -10,7 +10,7 @@ def relu(x: Node) -> Node:
     return take_max
 
 
-def softmax(x: Node) -> Node:
+def sigmoid(x: Node) -> Node:
     a = add(one, exp(neg(x)))
     return power(a, neg_one)
 
