@@ -10,7 +10,7 @@ class Node(ABC):
     is_param: bool = False
     learnable: bool = False
 
-    def __init__(self, name=None):
+    def __init__(self, name: str = None, need_grad: bool = True):
         if not name:
             name = f"{self.op_name}_{self.index}"
         self.__class__.index += 1
@@ -19,6 +19,7 @@ class Node(ABC):
         self.children: List[Node] = []
         self.value: Optional[np.ndarray] = None
         self.grad: Optional[Node] = None
+        self.need_grad: bool = need_grad
 
     def op(self):
         pass
@@ -45,6 +46,8 @@ class Node(ABC):
 
         current_children = self.children.copy()
         for c in current_children:
+            if not c.need_grad:
+                continue
             child_grad = c.build_grad()
             bp = c.bp(self, child_grad)
             child_grads.append(bp)
@@ -236,7 +239,7 @@ class Sub(Node):
             constant = Constant(-np.ones((1, )))
         else:
             raise ValueError()
-        return ScalarMul(constant, downstream_grad)
+        return ScalarMul(constant, downstream_grad, compute_grad=False)
 
 
 class ScalarMul(Node):
@@ -254,7 +257,7 @@ class ScalarMul(Node):
 
     def bp(self, wrt: Node, downstream_grad: Node) -> Node:
         if wrt == self.mat:
-            return ScalarMul(self.k, downstream_grad)
+            return ScalarMul(self.k, downstream_grad, compute_grad=False)
         elif wrt == self.k:
             return self.mat
         else:
@@ -276,9 +279,9 @@ class MatMul(Node):
 
     def bp(self, wrt: Node, downstream_grad: Node):
         if wrt == self.w:
-            return MatMul(downstream_grad, Transpose(self.x))
+            return MatMul(downstream_grad, Transpose(self.x, compute_grad=False), compute_grad=False)
         elif wrt == self.x:
-            return MatMul(Transpose(self.w), downstream_grad)
+            return MatMul(Transpose(self.w, compute_grad=False), downstream_grad, compute_grad=False)
         else:
             raise ValueError()
 
@@ -332,9 +335,9 @@ class Max(Node):
 
     def bp(self, wrt: Node, downstream_grad: Node):
         if wrt == self.a:
-            cond = Geq(self.a, self.b)
+            cond = Geq(self.a, self.b, compute_grad=False)
         elif wrt == self.b:
-            cond = Geq(self.b, self.a)
+            cond = Geq(self.b, self.a, compute_grad=False)
         else:
             raise ValueError()
         return ElementwiseMul(cond, downstream_grad)
@@ -352,7 +355,7 @@ class Exp(Node):
         return np.exp(self.x.value)
 
     def bp(self, wrt: Node, downstream_grad: Node):
-        return ElementwiseMul(Exp(self.x), downstream_grad)
+        return ElementwiseMul(Exp(self.x, compute_grad=False), downstream_grad, compute_grad=False)
 
 
 class Log(Node):
@@ -368,7 +371,7 @@ class Log(Node):
 
     def bp(self, wrt: Node, downstream_grad: Node):
         pow = Constant(np.asarray([-1.]))
-        return ElementwiseMul(Pow(self.x, pow), downstream_grad)
+        return ElementwiseMul(Pow(self.x, pow, compute_grad=False), downstream_grad, compute_grad=False)
 
 
 class Pow(Node):
@@ -387,8 +390,8 @@ class Pow(Node):
     def bp(self, wrt: Node, downstream_grad: Node):
         one = Constant(np.asarray([1.]))
         new_power = Sub(self.a, one)
-        grad = ScalarMul(self.a, Pow(self.x, new_power))
-        return ElementwiseMul(grad, downstream_grad)
+        grad = ScalarMul(self.a, Pow(self.x, new_power, compute_grad=False), compute_grad=False)
+        return ElementwiseMul(grad, downstream_grad, compute_grad=False)
 
 
 """
@@ -410,8 +413,8 @@ sub = Sub
 """
 constants
 """
-zero = Constant(value=np.asarray([0.]))
-one = Constant(value=np.asarray([1.]))
-neg_one = Constant(value=np.asarray([-1.]))
+zero = Constant(value=np.asarray([0.]), name='ZERO')
+one = Constant(value=np.asarray([1.]), name='ONE')
+neg_one = Constant(value=np.asarray([-1.]), name='NEG_ONE')
 
 # TODO concat

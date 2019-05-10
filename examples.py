@@ -23,7 +23,7 @@ def xor():
     loss.show()
 
     # train
-    iterations = 10000
+    iterations = 10000000
     for i in range(iterations):
         x1 = int(np.random.rand() > 0.5)
         x2 = int(np.random.rand() > 0.5)
@@ -37,7 +37,7 @@ def xor():
         for p in params:
             p.backward()
 
-        lr = 0.01
+        lr = 0.001
         for p in params:
             p.simple_apply_grad(lr)
 
