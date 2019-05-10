@@ -120,6 +120,16 @@ class Node(ABC):
             other = Constant(np.asarray(other))
         return Geq(self, other)
 
+    def __neg__(self):
+        neg_one = Constant(value=np.asarray([-1.], dtype=np.float))
+        return ScalarMul(neg_one, self)
+
+    def __truediv__(self, other):
+        if not isinstance(other, Node):
+            other = Constant(np.asarray(other))
+        reciprocal = other ** -1.
+        return MatMul(self, reciprocal)
+
 
 class PlaceHolder(Node):
     op_name = "PlaceHolder"
@@ -394,3 +404,11 @@ exp = Exp
 log = Log
 power = Pow
 sub = Sub
+
+
+"""
+constants
+"""
+zero = Constant(value=np.asarray([0.]))
+one = Constant(value=np.asarray([1.]))
+neg_one = Constant(value=np.asarray([-1.]))
