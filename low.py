@@ -362,5 +362,5 @@ elementwise_mut = ElementwiseMul
 maximum = Max
 exp = Exp
 log = Log
-pow = Pow
+power = Pow
 sub = Sub
