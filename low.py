@@ -272,3 +272,14 @@ class Max(Node):
             raise ValueError()
         return ElementwiseMut(cond, downstream_grad)
 
+
+"""
+function like aliases
+"""
+transpose = Transpose
+add = Add
+scalar_mul = ScalarMul
+matmul = MatMul
+geq = Geq
+elementwise_mut = ElementwiseMut
+max = Max
