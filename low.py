@@ -196,7 +196,25 @@ class Transpose(Node):
         return np.transpose(self.parent.value)
 
     def bp(self, wrt: Node, downstream_grad: Node):
-        return downstream_grad
+        return Transpose(downstream_grad)
+
+
+class Reshape(Node):
+    op_name = "Transpose"
+
+    def __init__(self, parent: Node, new_shape: Tuple[int], **kwargs):
+        super().__init__(**kwargs)
+        self.new_shape = new_shape
+        self.old_shape = None
+        self.parent = parent
+        self.link_from(parent)
+
+    def op(self):
+        self.old_shape = self.parent.value.shape
+        return np.reshape(self.parent.value, self.new_shape)
+
+    def bp(self, wrt: Node, downstream_grad: Node):
+        return Reshape(downstream_grad, self.old_shape)
 
 
 class Add(Node):

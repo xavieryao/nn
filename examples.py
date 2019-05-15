@@ -1,19 +1,20 @@
-from low import *
 from medium import *
+from low import *
 
 
 def xor():
     # define parameters
     x_in = PlaceHolder(shape=(2, 1), name='x')
     y_in = PlaceHolder(shape=(1, 1), name='y_true')
-    w1 = Parameter(np.random.rand(32, 2), name='w1')
+    w1 = Parameter(np.random.rand(2, 32), name='w1')
     b1 = Parameter(np.random.rand(32, 1), name='b1')
     w2 = Parameter(np.random.rand(1, 32), name='w2')
     b2 = Parameter(np.random.rand(1, 1), name='b2')
     params = [w1, b1, w2, b2]
 
     # forward calculation
-    x = relu(w1 @ x_in + b1)
+    w = Transpose(w1)
+    x = relu(w @ x_in + b1)
     x = sigmoid(w2 @ x + b2)
 
     # loss function
@@ -37,7 +38,7 @@ def xor():
         for p in params:
             p.backward()
 
-        lr = 0.001
+        lr = 0.01
         for p in params:
             p.simple_apply_grad(lr)
 
