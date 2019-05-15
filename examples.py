@@ -89,5 +89,6 @@ def linear_regression():
 
         print(f"{i}   {loss_val}")
 
+
 if __name__ == '__main__':
     xor()

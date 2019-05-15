@@ -239,7 +239,7 @@ class Sub(Node):
             constant = Constant(-np.ones((1, )))
         else:
             raise ValueError()
-        return ScalarMul(constant, downstream_grad, compute_grad=False)
+        return ScalarMul(constant, downstream_grad, need_grad=False)
 
 
 class ScalarMul(Node):
@@ -257,7 +257,7 @@ class ScalarMul(Node):
 
     def bp(self, wrt: Node, downstream_grad: Node) -> Node:
         if wrt == self.mat:
-            return ScalarMul(self.k, downstream_grad, compute_grad=False)
+            return ScalarMul(self.k, downstream_grad, need_grad=False)
         elif wrt == self.k:
             return self.mat
         else:
@@ -279,9 +279,9 @@ class MatMul(Node):
 
     def bp(self, wrt: Node, downstream_grad: Node):
         if wrt == self.w:
-            return MatMul(downstream_grad, Transpose(self.x, compute_grad=False), compute_grad=False)
+            return MatMul(downstream_grad, Transpose(self.x, need_grad=False), need_grad=False)
         elif wrt == self.x:
-            return MatMul(Transpose(self.w, compute_grad=False), downstream_grad, compute_grad=False)
+            return MatMul(Transpose(self.w, need_grad=False), downstream_grad, need_grad=False)
         else:
             raise ValueError()
 
@@ -335,9 +335,9 @@ class Max(Node):
 
     def bp(self, wrt: Node, downstream_grad: Node):
         if wrt == self.a:
-            cond = Geq(self.a, self.b, compute_grad=False)
+            cond = Geq(self.a, self.b, need_grad=False)
         elif wrt == self.b:
-            cond = Geq(self.b, self.a, compute_grad=False)
+            cond = Geq(self.b, self.a, need_grad=False)
         else:
             raise ValueError()
         return ElementwiseMul(cond, downstream_grad)
@@ -355,7 +355,7 @@ class Exp(Node):
         return np.exp(self.x.value)
 
     def bp(self, wrt: Node, downstream_grad: Node):
-        return ElementwiseMul(Exp(self.x, compute_grad=False), downstream_grad, compute_grad=False)
+        return ElementwiseMul(Exp(self.x, need_grad=False), downstream_grad, need_grad=False)
 
 
 class Log(Node):
@@ -371,7 +371,7 @@ class Log(Node):
 
     def bp(self, wrt: Node, downstream_grad: Node):
         pow = Constant(np.asarray([-1.]))
-        return ElementwiseMul(Pow(self.x, pow, compute_grad=False), downstream_grad, compute_grad=False)
+        return ElementwiseMul(Pow(self.x, pow, need_grad=False), downstream_grad, need_grad=False)
 
 
 class Pow(Node):
@@ -390,8 +390,8 @@ class Pow(Node):
     def bp(self, wrt: Node, downstream_grad: Node):
         one = Constant(np.asarray([1.]))
         new_power = Sub(self.a, one)
-        grad = ScalarMul(self.a, Pow(self.x, new_power, compute_grad=False), compute_grad=False)
-        return ElementwiseMul(grad, downstream_grad, compute_grad=False)
+        grad = ScalarMul(self.a, Pow(self.x, new_power, need_grad=False), need_grad=False)
+        return ElementwiseMul(grad, downstream_grad, need_grad=False)
 
 
 """
