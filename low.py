@@ -27,17 +27,20 @@ class Node(ABC):
     def bp(self, wrt: Node, downstream_grad: Node) -> Node:
         pass
 
-    def forward(self):
+    def forward(self, accumulate=False):
         if self.value is not None:
             return self.value
         for p in self.parents:
             p.forward()
-        self.value = self.op()
+        if accumulate and self.value is not None:
+            self.value += self.op()
+        else:
+            self.value = self.op()
         return self.value
 
-    def backward(self):
+    def backward(self, accumulate=False):
         self.build_grad()
-        return self.grad.forward()
+        return self.grad.forward(accumulate=accumulate)
 
     def build_grad(self) -> Node:
         if self.grad:

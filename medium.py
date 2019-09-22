@@ -1,4 +1,4 @@
-from low import *
+from .low import *
 
 
 def neg(x: Node) -> Node:
