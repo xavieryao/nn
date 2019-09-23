@@ -90,7 +90,7 @@ class Node(ABC):
     def save(self, results: Optional[dict] = None) -> dict:
         if results is None:
             results = {}
-        if self.is_param:
+        if self.learnable:
             results[self.name] = self.value
         return results
 
@@ -99,7 +99,7 @@ class Node(ABC):
             results = {}
         self.save(results)
         for p in self.parents:
-            p.save(results)
+            p.save_upstream(results)
         return results
     
     def load(self, results) -> None:
@@ -109,7 +109,7 @@ class Node(ABC):
     def load_upstream(self, results) -> None:
         self.load(results)
         for p in self.parents:
-            p.load(results)
+            p.load_upstream(results)
 
     def __str__(self):
         return f"<{self.name}{' ' + str(self.value.shape) if self.value is not None else ''}>"
