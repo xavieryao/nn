@@ -92,7 +92,6 @@ class Node(ABC):
             results = {}
         if self.is_param:
             results[self.name] = self.value
-        self._save(results)
         return results
 
     def save_upstream(self, results=None) -> dict:
@@ -102,6 +101,15 @@ class Node(ABC):
         for p in self.parents:
             p.save(results)
         return results
+    
+    def load(self, results) -> None:
+        if self.name in results:
+            self.value = results[self.name]
+    
+    def load_upstream(self, results) -> None:
+        self.load(results)
+        for p in self.parents:
+            p.load(results)
 
     def __str__(self):
         return f"<{self.name}{' ' + str(self.value.shape) if self.value is not None else ''}>"
