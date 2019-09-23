@@ -87,6 +87,22 @@ class Node(ABC):
         for p in self.parents:
             p.reset_upstream()
 
+    def save(self, results: Optional[dict] = None) -> dict:
+        if results is None:
+            results = {}
+        if self.is_param:
+            results[self.name] = self.value
+        self._save(results)
+        return results
+
+    def save_upstream(self, results=None) -> dict:
+        if results is None:
+            results = {}
+        self.save(results)
+        for p in self.parents:
+            p.save(results)
+        return results
+
     def __str__(self):
         return f"<{self.name}{' ' + str(self.value.shape) if self.value is not None else ''}>"
 
@@ -411,7 +427,8 @@ class Pow(Node):
     def bp(self, wrt: Node, downstream_grad: Node):
         one = Constant(np.asarray([1.]))
         new_power = Sub(self.a, one)
-        grad = ScalarMul(self.a, Pow(self.x, new_power, need_grad=False), need_grad=False)
+        grad = ScalarMul(self.a, Pow(self.x, new_power,
+                                     need_grad=False), need_grad=False)
         return ElementwiseMul(grad, downstream_grad, need_grad=False)
 
 

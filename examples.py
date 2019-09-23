@@ -1,5 +1,5 @@
-from medium import *
-from low import *
+from .medium import *
+from .low import *
 
 
 def xor():
